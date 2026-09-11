@@ -34,7 +34,8 @@
       return cells.every(({ r, c }) => Board.inBounds(r, c) && !this.shipAt.has(Board.key(r, c)));
     }
     place(def, cells) {
-      const ship = { name: def.name, size: def.size, cells, hits: new Set() };
+      const horizontal = cells.length < 2 || cells[0].r === cells[1].r;
+      const ship = { name: def.name, size: def.size, cells, hits: new Set(), horizontal };
       cells.forEach(({ r, c }) => this.shipAt.set(Board.key(r, c), ship));
       this.ships.push(ship);
       return ship;
@@ -231,7 +232,11 @@
       const shot = board.shots.get(k);
       el.className = "cell";
       if (!shot) el.classList.add("unknown");
-      if (ship && (revealShips || (ship.hits.size === ship.size))) el.classList.add("ship");
+      if (ship && (revealShips || (ship.hits.size === ship.size))) {
+        const idx = ship.cells.findIndex((cell) => cell.r === r && cell.c === c);
+        const part = idx === 0 ? "bow" : idx === ship.size - 1 ? "stern" : "mid";
+        el.classList.add("ship", ship.horizontal ? "ship-h" : "ship-v", `ship-${part}`);
+      }
       if (shot === "miss") el.classList.add("miss");
       if (shot === "hit") {
         el.classList.add("hit");
@@ -337,6 +342,22 @@
     cellEl(boardEl, r, c).classList.add("last-shot");
   }
 
+  function spawnEffect(boardEl, r, c, out) {
+    const el = cellEl(boardEl, r, c);
+    const fx = document.createElement("span");
+    fx.className = out.result === "hit" ? (out.sunk ? "fx boom big" : "fx boom") : "fx splash";
+    fx.innerHTML = out.result === "hit"
+      ? '<i class="flash"></i><i class="fire"></i><i class="ring"></i><i class="smoke"></i>' +
+        '<i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><i class="spark s5"></i><i class="spark s6"></i>'
+      : '<i class="ring"></i><i class="ring r2"></i><i class="drop"></i>';
+    el.appendChild(fx);
+    setTimeout(() => fx.remove(), 1400);
+    if (out.sunk) {
+      boardEl.classList.add("shake");
+      setTimeout(() => boardEl.classList.remove("shake"), 500);
+    }
+  }
+
   function playerFire(r, c) {
     if (state.phase !== "battle" || state.busy) return;
     const out = state.enemy.fire(r, c);
@@ -345,12 +366,13 @@
     let msg;
     if (out.result === "hit") {
       state.playerHits++;
-      msg = out.sunk ? `💥 You sank the enemy ${out.ship.name}!` : `🔴 Hit at ${coordName(r, c)}!`;
+      msg = out.sunk ? `BOOM! You sank the enemy ${out.ship.name}!` : `Direct hit at ${coordName(r, c)}!`;
     } else {
-      msg = `⚪ Miss at ${coordName(r, c)}.`;
+      msg = `Splash — miss at ${coordName(r, c)}.`;
     }
     renderAll();
     markLastShot(els.enemyBoard, r, c);
+    spawnEffect(els.enemyBoard, r, c, out);
     if (state.enemy.allSunk()) return endGame(true);
     setStatus(`${msg} AI is firing…`);
     state.busy = true;
@@ -371,6 +393,7 @@
     state.ai.notify(shot, out, state.player);
     renderAll();
     markLastShot(els.playerBoard, shot.r, shot.c);
+    spawnEffect(els.playerBoard, shot.r, shot.c, out);
     state.busy = false;
     if (state.player.allSunk()) return endGame(false);
     setStatus(`${prevMsg} ${aiMsg} Your turn.`);
