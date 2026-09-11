@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battleship — Play vs. AI</title>
+  <meta name="description" content="Play the classic Battleship board game online against an AI opponent. Free, no sign-up." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>⚓ Battleship</h1>
+    <div class="topbar-actions">
+      <button id="rulesBtn" class="btn ghost">How to Play</button>
+      <button id="newGameBtn" class="btn">New Game</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="status" class="status" aria-live="polite">Place your ships to begin.</section>
+
+    <section id="placementPanel" class="placement">
+      <p>
+        Placing: <strong id="currentShipName">Carrier</strong>
+        (<span id="currentShipSize">5</span> squares) —
+        click a square on <em>your</em> board. Press <kbd>R</kbd> or the button to rotate.
+      </p>
+      <div class="placement-actions">
+        <button id="rotateBtn" class="btn ghost">Rotate (<span id="orientationLabel">Horizontal</span>)</button>
+        <button id="randomBtn" class="btn ghost">Random Placement</button>
+        <button id="undoBtn" class="btn ghost">Undo Last Ship</button>
+        <button id="startBtn" class="btn" disabled>Start Battle</button>
+      </div>
+    </section>
+
+    <section class="boards">
+      <div class="board-wrap">
+        <h2>Your Fleet</h2>
+        <div class="grid-container">
+          <div class="col-labels" id="playerColLabels"></div>
+          <div class="row-labels" id="playerRowLabels"></div>
+          <div id="playerBoard" class="board" role="grid" aria-label="Your board"></div>
+        </div>
+        <ul id="playerFleet" class="fleet"></ul>
+      </div>
+
+      <div class="board-wrap">
+        <h2>Enemy Waters</h2>
+        <div class="grid-container">
+          <div class="col-labels" id="enemyColLabels"></div>
+          <div class="row-labels" id="enemyRowLabels"></div>
+          <div id="enemyBoard" class="board enemy" role="grid" aria-label="Enemy board"></div>
+        </div>
+        <ul id="enemyFleet" class="fleet"></ul>
+      </div>
+    </section>
+
+    <section class="scoreboard">
+      <span>Your shots: <strong id="playerShots">0</strong></span>
+      <span>Your hits: <strong id="playerHits">0</strong></span>
+      <span>AI shots: <strong id="aiShots">0</strong></span>
+      <span>AI hits: <strong id="aiHits">0</strong></span>
+    </section>
+
+    <div class="difficulty">
+      <label for="difficulty">AI difficulty:</label>
+      <select id="difficulty">
+        <option value="easy">Easy — fires randomly</option>
+        <option value="normal" selected>Normal — hunts after a hit</option>
+        <option value="hard">Hard — smart hunting &amp; parity search</option>
+      </select>
+    </div>
+  </main>
+
+  <!-- Rules modal -->
+  <div id="rulesModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="modal-content">
+      <button id="closeRules" class="close" aria-label="Close">&times;</button>
+      <h2 id="rulesTitle">How to Play Battleship (and How to Win)</h2>
+
+      <h3>The Goal</h3>
+      <p>
+        You and the AI each hide a fleet of <strong>5 ships</strong> on a secret 10×10 grid.
+        You take turns firing at each other's grid. <strong>The first player to sink all
+        5 enemy ships wins.</strong>
+      </p>
+
+      <h3>Your Fleet</h3>
+      <table class="ships-table">
+        <thead><tr><th>Ship</th><th>Length</th></tr></thead>
+        <tbody>
+          <tr><td>Carrier</td><td>5 squares</td></tr>
+          <tr><td>Battleship</td><td>4 squares</td></tr>
+          <tr><td>Cruiser</td><td>3 squares</td></tr>
+          <tr><td>Submarine</td><td>3 squares</td></tr>
+          <tr><td>Destroyer</td><td>2 squares</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Step 1 — Place Your Ships</h3>
+      <ol>
+        <li>Ships are placed on <strong>Your Fleet</strong> (the left board).</li>
+        <li>Click a square to place the current ship. Press <kbd>R</kbd> or <em>Rotate</em> to switch between horizontal and vertical.</li>
+        <li>Ships must fit on the board and <strong>cannot overlap</strong>. They may touch each other.</li>
+        <li>In a hurry? Click <em>Random Placement</em>. Then press <em>Start Battle</em>.</li>
+      </ol>
+
+      <h3>Step 2 — Take Turns Firing</h3>
+      <ol>
+        <li>Click any square on <strong>Enemy Waters</strong> (the right board) to fire a shot.</li>
+        <li>🔴 <strong>Red</strong> = <strong>Hit</strong> — part of a ship is there.</li>
+        <li>⚪ <strong>Grey dot</strong> = <strong>Miss</strong> — only water.</li>
+        <li>When every square of a ship is hit, it is <strong>sunk</strong> and the game announces which ship went down.</li>
+        <li>After your shot, the AI fires at your board. Watch your fleet on the left.</li>
+        <li>You can't fire at the same square twice.</li>
+      </ol>
+
+      <h3>How to Win — Strategy Tips for Beginners</h3>
+      <ul>
+        <li><strong>Hunt, then target.</strong> Fire spread-out shots until you get a hit, then fire at the squares <em>directly next to</em> it (up, down, left, right) to find the rest of the ship.</li>
+        <li><strong>Follow the line.</strong> Once you have two hits in a row, keep firing along that line until the ship sinks or you miss; then try the other end.</li>
+        <li><strong>Use the checkerboard trick.</strong> Every ship is at least 2 squares long, so shooting only every other square (like the dark squares on a chessboard) still guarantees you'll touch every ship while using half the shots.</li>
+        <li><strong>Don't forget the small ships.</strong> The 2-square Destroyer is the hardest to find — check the corners and edges near the end.</li>
+        <li><strong>Count the enemy's remaining ships.</strong> The fleet list under the enemy board shows what's left, so you know how big a gap you're searching for.</li>
+        <li><strong>Hide your own fleet wisely.</strong> Avoid placing all your ships in the centre or in a neat row; spreading them out — with some on the edges — makes the AI work harder.</li>
+      </ul>
+
+      <button id="gotItBtn" class="btn">Got it — let's play!</button>
+    </div>
+  </div>
+
+  <footer>
+    <p>Open source on <a href="https://github.com/maasapphire-blip/battleship" target="_blank" rel="noopener">GitHub</a>. No sign-up, no tracking — just Battleship.</p>
+  </footer>
+
+  <script src="game.js"></script>
+</body>
+</html>
